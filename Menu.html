@@ -117,7 +117,7 @@
         .luxury-menu-canvas { width: 100%; max-width: 550px; margin: 0 auto; padding: 30px 20px; box-sizing: border-box; transition: all 0.5s ease; min-height: 100vh; position: relative; overflow: hidden; }
         .curated-brand-header { text-align: center; margin-bottom: 30px; padding-bottom: 25px; transition: all 0.5s ease; position:relative; z-index:2;}
         .brand-logo-frame { width: 90px; height: 90px; margin: 0 auto 15px; overflow: hidden; background: transparent; transition: all 0.5s ease; position: relative; }
-        .brand-logo-frame img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s ease, border-radius 0.2s ease; }
+        .brand-logo-frame img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s ease; border-radius: 0%; }
         .curated-brand-header h1 { margin: 0; font-size: 24px; text-transform: uppercase; transition: all 0.5s ease; }
         .curated-brand-header p { font-size: 11px; margin: 8px 0 0; text-transform: uppercase; letter-spacing: 2px; }
         .header-phone-contact { font-size: 12px; margin-top: 12px; font-weight: 600; opacity: 0.8; }
@@ -479,7 +479,7 @@
                 <div style="font-size:11px; color:var(--text-dim); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom: 15px;">Pro Logo Editor (QR)</div>
                 
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom: 15px;">
-                    <input type="file" id="qrLogoUploader" accept="image/*" class="mini-data-field" style="padding:8px; font-size:11px; flex:1;">
+                    <input type="text" id="qrLogoDriveUrl" class="mini-data-field" placeholder="Paste Google Drive URL for QR Logo" style="padding:8px; font-size:11px; flex:1;" oninput="updateQRLogoFromDrive()">
                     <button class="premium-btn btn-danger" style="padding:10px 15px; font-size:11px;" onclick="removeQRLogo()">Remove</button>
                 </div>
                 
@@ -567,9 +567,9 @@
                         <span style="font-size:14px; font-weight:700; color:var(--champagne-gold);">Pro Photo Studio (Menu Logo)</span>
                     </div>
                     
-                    <div style="margin-bottom: 15px;" id="logoUploaderFieldInputContainer">
-                        <span style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; font-weight: 600;">Upload New Logo</span>
-                        <input type="file" id="mainLogoUploader" accept="image/*" class="mini-data-field" style="padding: 10px; background: rgba(255,255,255,0.05); margin-top:5px;">
+                    <div style="margin-bottom: 15px;" id="adminOnlyLogoContainer">
+                        <span style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; font-weight: 600;">Upload New Logo (Drive URL)</span>
+                        <input type="text" id="mainLogoDriveUrl" class="mini-data-field" placeholder="Paste Google Drive URL here" style="margin-top:5px;" oninput="updateMainLogoFromDrive()">
                     </div>
                     
                     <div class="pro-editor-panel">
@@ -620,12 +620,6 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="super-admin-only-panel" id="superAdminBrandingDeskBlock">
-                    <div class="mini-label-group"><span>Hotel Identity Title</span><input type="text" id="inputHotelNameField" class="mini-data-field" oninput="updateBrand()"></div>
-                    <div class="mini-label-group"><span>Tagline / Slogan</span><input type="text" id="inputHotelSloganField" class="mini-data-field" oninput="updateBrand()"></div>
-                    <div class="mini-label-group"><span>Contact Info Line</span><input type="text" id="inputHotelPhoneField" class="mini-data-field" oninput="updateBrand()"></div>
-                </div>
                 
                 <div id="administrativeFormFieldsDestination"></div>
                 
@@ -638,13 +632,6 @@
     </div>
 
     <script>
-        // Using correct Hotel Mantra Identity
-        let brandData = { 
-            name: "Hotel Mantra Thakali & Hospitality", 
-            tag: "Premium Dining Experience", 
-            phone: "Contact: +977-9800000000" 
-        };
-        
         let baseTemplate = [
             { id: "cat_1", title: "Signature Selections", items: [
                 { id: 1, name: "Premium Thakali Set", price: "550", img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&auto=format&fit=crop&q=80", desc: "Authentic organic presentation with local spices." },
@@ -655,7 +642,6 @@
             ]}
         ];
 
-        // REQ 4: Expanded to 30 themes tailored to specific food outlets
         let themeNames = [
             "Royal Gold Edition", "Pristine White", "Neon Cyber-Lounge", "Organic Botanical", 
             "Glassmorphism Elegance", "Crimson Velvet", "Brutalist High Fashion", "Midnight Sapphire", 
@@ -709,10 +695,12 @@
             let fw = document.getElementById("masterWorkspaceFramework");
             if (role === 'super_admin') {
                 fw.classList.add("role-super-admin");
-                document.getElementById("superAdminBrandingDeskBlock").style.display = "grid";
+                document.getElementById("adminOnlyLogoContainer").style.display = "block";
+                document.querySelector(".qr-custom-logo-settings").style.display = "block";
             } else {
                 fw.classList.remove("role-super-admin");
-                document.getElementById("superAdminBrandingDeskBlock").style.display = "none";
+                document.getElementById("adminOnlyLogoContainer").style.display = "none";
+                document.querySelector(".qr-custom-logo-settings").style.display = "none";
             }
             
             const urlParams = new URLSearchParams(window.location.search);
@@ -720,7 +708,6 @@
             const motionStyle = urlParams.get('motion');
             
             buildQrStyleSelectorPills();
-            setupLogoUploadListeners();
             setupSwipeGestures();
 
             if (viewMode === 'uploaded') {
@@ -738,34 +725,15 @@
             document.getElementById("qrStylesSelector").innerHTML = qrStylesHTML;
         }
 
-        function setupLogoUploadListeners() {
-            document.getElementById('mainLogoUploader').addEventListener('change', function(e) {
-                if(e.target.files && e.target.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        document.getElementById('liveMenuLogoView').src = e.target.result;
-                        if(!qrLogoRemoved && !document.getElementById('qrLogoUploader').value) {
-                            qrCurrentLogo = e.target.result;
-                        }
-                    }
-                    reader.readAsDataURL(e.target.files[0]);
-                }
-            });
-
-            document.getElementById('qrLogoUploader').addEventListener('change', function(e) {
-                if(e.target.files && e.target.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        qrCurrentLogo = e.target.result;
-                        qrLogoRemoved = false;
-                        updateQRCustomSettings();
-                    }
-                    reader.readAsDataURL(e.target.files[0]);
-                }
-            });
+        function parseDriveUrl(url) {
+            // Regex to match Google Drive ID safely from direct or share links
+            let match = url.match(/(?:file\/d\/|id=|d\/)([\w-]{25,})/);
+            if (match && match[1]) {
+                return `https://lh3.googleusercontent.com/d/${match[1]}`;
+            }
+            return url;
         }
 
-        // REQ 3: Processing Google Drive URLs instead of direct File Upload
         function loadFolioUrls() {
             if(currentRole !== 'super_admin' && currentRole !== 'hotel_user') {
                 alert('Action denied.');
@@ -779,17 +747,32 @@
             customFolioPages = [];
 
             urls.forEach(url => {
-                let driveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                if(driveMatch && driveMatch[1]) {
-                    customFolioPages.push(`https://drive.google.com/uc?export=view&id=${driveMatch[1]}`);
-                } else {
-                    customFolioPages.push(url);
-                }
+                customFolioPages.push(parseDriveUrl(url));
             });
 
             activeFolioPageIndex = 0;
             document.getElementById("folioUrlsInput").value = "";
             drawWorkspace();
+        }
+
+        function updateMainLogoFromDrive() {
+            let url = document.getElementById('mainLogoDriveUrl').value;
+            if(url) {
+                let parsedUrl = parseDriveUrl(url);
+                document.getElementById('liveMenuLogoView').src = parsedUrl;
+                if(!qrLogoRemoved && !document.getElementById('qrLogoDriveUrl').value) {
+                    qrCurrentLogo = parsedUrl;
+                }
+            }
+        }
+
+        function updateQRLogoFromDrive() {
+            let url = document.getElementById('qrLogoDriveUrl').value;
+            if(url) {
+                qrCurrentLogo = parseDriveUrl(url);
+                qrLogoRemoved = false;
+                updateQRCustomSettings();
+            }
         }
 
         function setupSwipeGestures() {
@@ -980,12 +963,7 @@
 
                 applyThemeClass(themeId);
             }
-
-            document.getElementById("inputHotelNameField").value = brandData.name;
-            document.getElementById("inputHotelSloganField").value = brandData.tag;
-            document.getElementById("inputHotelPhoneField").value = brandData.phone;
             
-            updateBrand();
             drawWorkspace();
         }
 
@@ -1027,7 +1005,6 @@
             }
         }
 
-        // REQ 5: Theme Selected Label Integration
         function renderThemeSidebar() {
             let html = "";
             databases.forEach(db => {
@@ -1048,7 +1025,6 @@
             openMenu(previewThemeId); toggleThemeSidebar(false);
         }
 
-        // REQ 7: Isolated QR logic
         function showQR() {
             let baseUrl = window.location.href.split('?')[0];
             let linkedUrl = "";
@@ -1076,7 +1052,7 @@
             
             applyQRStyle(0); 
             qrCodeInstance.append(document.getElementById("qrCodeContainer"));
-            document.getElementById("qrCustomTitleInput").value = brandData.name;
+            document.getElementById("qrCustomTitleInput").value = "Hotel Mantra Thakali & Hospitality";
             updateQRTextOverlay();
             
             document.getElementById('qrModalOverlay').style.display = 'flex';
@@ -1099,7 +1075,7 @@
         function removeQRLogo() {
             qrLogoRemoved = true;
             qrCurrentLogo = "";
-            document.getElementById("qrLogoUploader").value = ""; 
+            document.getElementById("qrLogoDriveUrl").value = ""; 
             updateQRCustomSettings();
         }
 
@@ -1120,7 +1096,6 @@
             });
         }
 
-        // REQ 8: Download QR with Text Overlay using html2canvas
         function downloadQR() {
             let fileLabel = currentThemeId === 'uploaded' ? "Uploaded_Folio" : "Theme_" + currentThemeId;
             let exportArea = document.getElementById("qrExportWrapper");
@@ -1135,15 +1110,6 @@
 
         function closeQR() {
             document.getElementById('qrModalOverlay').style.display = 'none';
-        }
-
-        function updateBrand() {
-            brandData.name = document.getElementById("inputHotelNameField").value;
-            brandData.tag = document.getElementById("inputHotelSloganField").value;
-            brandData.phone = document.getElementById("inputHotelPhoneField").value;
-            document.getElementById("liveBrandTitleNode").innerText = brandData.name || "HOTEL IDENTITY";
-            document.getElementById("liveBrandSloganNode").innerText = brandData.tag || "";
-            document.getElementById("liveBrandContactNode").innerText = brandData.phone || "";
         }
 
         function toggleDesk(active) {
@@ -1236,7 +1202,7 @@
                             <div class="food-card-details-box">
                                 <div class="food-card-meta-top">
                                     <h4 class="food-title-text">${item.name}</h4>
-                                    <span class="food-price-badge">$ ${item.price}</span>
+                                    <span class="food-price-badge">Rs. ${item.price}</span>
                                 </div>
                                 <p class="food-description-text">${item.desc}</p>
                             </div>
@@ -1264,14 +1230,9 @@
                 cat.items.forEach(item => {
                     html += `<div class="compact-item-input-row">
                         <div class="mini-label-group"><span>Item Name</span><input type="text" class="mini-data-field" value="${item.name}" oninput="updateItem('${cat.id}', ${item.id}, 'name', this.value)"></div>
-                        <div class="mini-label-group"><span>Price ($)</span><input type="number" class="mini-data-field" value="${item.price}" oninput="updateItem('${cat.id}', ${item.id}, 'price', this.value)"></div>
+                        <div class="mini-label-group"><span>Price (Rs.)</span><input type="number" class="mini-data-field" value="${item.price}" oninput="updateItem('${cat.id}', ${item.id}, 'price', this.value)"></div>
                         <div class="mini-label-group super-url-field-node"><span>Image URL</span><input type="text" class="mini-data-field" value="${item.img}" oninput="updateItem('${cat.id}', ${item.id}, 'img', this.value)"></div>
-                        <div class="mini-label-group" style="grid-column: 1 / -1;"><span>Description</span>
-                            <div style="display:flex;gap:10px;align-items:center;">
-                                <input type="text" class="mini-data-field" style="flex:1;" value="${item.desc}" oninput="updateItem('${cat.id}', ${item.id}, 'desc', this.value)">
-                                <button style="background:rgba(255,51,51,0.1);border:1px solid rgba(255,51,51,0.3);color:var(--danger-red);cursor:pointer; width:35px;height:35px;border-radius:10px;display:flex;align-items:center;justify-content:center;" onclick="delItem('${cat.id}', ${item.id})">✕</button>
-                            </div>
-                        </div>
+                        <div class="mini-label-group" style="grid-column: 1 / -1;"><span>Description</span><input type="text" class="mini-data-field" value="${item.desc}" oninput="updateItem('${cat.id}', ${item.id}, 'desc', this.value)"></div>
                     </div>`;
                 });
                 html += `</div></div>`;
@@ -1279,118 +1240,6 @@
             });
         }
 
-        function updateCat(id, val) { let c = activeDB.find(x => x.id === id); if(c) { c.title = val; drawClientDigitalMenu(); } }
-        function updateItem(cid, iid, key, val) { let c = activeDB.find(x => x.id === cid); if(c) { let i = c.items.find(x => x.id === iid); if(i) { i[key] = val; drawClientDigitalMenu(); } } }
-        function addSection() { activeDB.push({ id: "cat_"+Date.now(), title: "New Menu Category", items: [{ id: Date.now(), name: "New Dish", price: "10", img: "", desc: "Dish description here." }] }); drawWorkspace(); }
-        function addItem(cid) { let c = activeDB.find(x => x.id === cid); if(c) { c.items.push({ id: Date.now(), name: "New Dish", price: "10", img: "", desc: "Dish description here." }); drawWorkspace(); } }
-        function delCat(id) { activeDB = activeDB.filter(x => x.id !== id); drawWorkspace(); }
-        function delItem(cid, iid) { let c = activeDB.find(x => x.id === cid); if(c) { c.items = c.items.filter(x => x.id !== iid); drawWorkspace(); } }
-    </script>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, query, where, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-        const firebaseConfig = { 
-            apiKey: "AIzaSyBkRWPYZtmjS-lpiojtNtY_6h4IORZ6xjc", 
-            authDomain: "hotel-menu-f25ed.firebaseapp.com", 
-            projectId: "hotel-menu-f25ed", 
-            storageBucket: "hotel-menu-f25ed.firebasestorage.app", 
-            messagingSenderId: "750886705933", 
-            appId: "1:750886705933:web:c3331f1dd8cfc99342ee44" 
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // REQ 6: Save edited menu data to Cloud Firestore (Real-time updates)
-        window.saveMenuDataToCloud = async function() {
-            try {
-                await setDoc(doc(db, "hotel_menus", "Hotel_Mantra_DB"), {
-                    menuData: activeDB,
-                    folioImages: customFolioPages
-                });
-                alert('Menu Data Synced to Cloud Successfully!');
-            } catch(e) {
-                console.error("Cloud Save Failed: ", e);
-                alert("Saved locally (Cloud configuration error)");
-            }
-        }
-
-        window.loadMenuDataFromCloud = async function() {
-            try {
-                let snap = await getDoc(doc(db, "hotel_menus", "Hotel_Mantra_DB"));
-                if(snap.exists()) {
-                    let data = snap.data();
-                    if(data.menuData) activeDB = data.menuData;
-                    if(data.folioImages) customFolioPages = data.folioImages;
-                }
-            } catch(e) {
-                console.error("Cloud Load Failed: ", e);
-            }
-        }
-
-        // 3 Minute Auto-Logout 
-        let logoutTimer;
-        function resetTimer() { 
-            clearTimeout(logoutTimer); 
-            logoutTimer = setTimeout(() => { 
-                forceLogout(); 
-            }, 180000); 
-        }
-        window.onload = resetTimer; window.onmousemove = resetTimer; window.onkeypress = resetTimer; window.ontouchstart = resetTimer;
-
-        window.executeLogout = forceLogout;
-
-        function forceLogout() {
-            signOut(auth).then(() => {
-                localStorage.removeItem("hotelUserEmail");
-                localStorage.removeItem("hotelUserId");
-                window.location.href = "index.html";
-            });
-        }
-
-        // Customer Direct Access Handler (For QR Scans)
-        const urlParamsCheck = new URLSearchParams(window.location.search);
-        if (urlParamsCheck.get('mode') === 'uploaded' || urlParamsCheck.get('theme')) {
-            // Customer scanning QR - Bypass auth to show menu directly
-            document.getElementById("authLoader").style.display = "none";
-            window.loadMenuDataFromCloud().then(() => {
-                if (urlParamsCheck.get('mode') === 'uploaded') {
-                    openMenu('uploaded');
-                } else {
-                    openMenu(parseInt(urlParamsCheck.get('theme')));
-                }
-            });
-        } else {
-            // Admin Flow
-            onAuthStateChanged(auth, async (user) => {
-                const hotelEmail = localStorage.getItem("hotelUserEmail");
-                
-                if (user && user.email === "superadmin@power.com") {
-                    await window.loadMenuDataFromCloud();
-                    window.unlockMenu("super_admin");
-                } else if (hotelEmail) {
-                    try {
-                        const q = query(collection(db, "hotels"), where("email", "==", hotelEmail));
-                        const snap = await getDocs(q);
-                        if (!snap.empty && snap.docs[0].data().status === "Active") {
-                            await window.loadMenuDataFromCloud();
-                            window.unlockMenu("hotel_user");
-                        } else {
-                            forceLogout();
-                        }
-                    } catch(e) {
-                        alert("Verification Failed.");
-                        forceLogout();
-                    }
-                } else {
-                    forceLogout();
-                }
-            });
-        }
     </script>
 </body>
 </html>
