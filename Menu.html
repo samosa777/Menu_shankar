@@ -480,7 +480,10 @@
                 
                 <div style="margin-bottom: 15px;">
                     <span style="font-size: 9px; color: var(--text-dim); text-transform: uppercase; font-weight: 600;">Update QR Logo via URL</span>
-                    <input type="text" id="qrLogoUrlInput" class="mini-data-field" style="margin-top:5px; margin-bottom:10px;" placeholder="Paste Google Drive or Direct Image URL here..." oninput="updateQRLogoFromUrl()">
+                    <div style="display:flex; gap:10px; align-items:center; margin-top:5px; margin-bottom:10px;">
+                        <input type="text" id="qrLogoUrlInput" class="mini-data-field" placeholder="Paste Google Drive or Direct Image URL here...">
+                        <button class="premium-btn btn-outline" style="padding:10px 15px; font-size:11px;" onclick="updateQRLogoFromUrl()">Upload URL</button>
+                    </div>
                 </div>
 
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom: 15px;">
@@ -595,7 +598,7 @@
                         </div>
                         <div class="editor-control-row">
                             <div class="editor-icon-label">
-                                <svg viewBox="0 0 24 24"><path d="M15 3l2.3 2.3-2.89 2.87 1.42 1.42L18.7 6.7 21 9V3zM3 9l2.3-2.3 2.87 2.89 1.42-1.42L6.7 5.3 9 3H3zm6 12l-2.3-2.3 2.89-2.87-1.42-1.42L5.3 17.3 3 15v6zm12-6l-2.3 2.3-2.87-2.89-1.42 1.42 2.89 2.87L15 21h6z"/></svg>
+                                <svg viewBox="0 0 24 24"><path d="M15 3l2.3 2.3-2.89 2.87 1.42 1.42L18.7 6.7 21 9V3zM3 9l2.3-2.3 2.87 2.89 1.42-1.42L6.7 5.3 9 3H3zm6 12l-2.3-2.3-2.89-2.87-1.42-1.42L5.3 17.3 3 15v6zm12-6l-2.3 2.3-2.87-2.89-1.42 1.42 2.89 2.87L15 21h6z"/></svg>
                                 <span>L / R</span>
                             </div>
                             <div class="editor-slider-wrap">
@@ -760,11 +763,13 @@
             document.getElementById("qrStylesSelector").innerHTML = qrStylesHTML;
         }
 
+        // Updated Direct Image Parser (Fixed for strict Google Drive CORS/Hotlinking changes)
         function getDirectImageUrl(url) {
             if(!url) return "";
             let idMatch = url.match(/[-\w]{25,35}/);
-            if (idMatch) {
-                return `https://drive.google.com/uc?export=view&id=${idMatch[0]}`;
+            if (url.includes('drive.google.com') && idMatch) {
+                // Returns highly reliable direct image link with thumbnail api to bypass 403 blocks
+                return `https://drive.google.com/thumbnail?id=${idMatch[0]}&sz=w1000`;
             }
             return url;
         }
@@ -818,6 +823,7 @@
             updateQRCustomSettings();
         }
 
+        // Updated Load URLs (Fixed replacing issue & limit increased to 20 images)
         function loadFolioUrls() {
             if(currentRole !== 'super_admin' && currentRole !== 'hotel_user') return;
             let text = document.getElementById("folioUrlsInput").value;
@@ -826,6 +832,10 @@
             if (urls.length === 0) return;
 
             urls.forEach(url => {
+                if(customFolioPages.length >= 20) {
+                    alert("Maximum 20 photos allowed from Google Drive / URLs.");
+                    return;
+                }
                 let directUrl = getDirectImageUrl(url);
                 if(!customFolioPages.includes(directUrl)) {
                     customFolioPages.push(directUrl);
